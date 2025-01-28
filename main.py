@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, APIRouter, Query, status
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 from typing import Optional, List
-from fastapi.security.api_key import APIKeyHeader
 from starlette.status import (
     HTTP_204_NO_CONTENT,
     HTTP_201_CREATED,
@@ -26,11 +26,20 @@ app = FastAPI()
 # Dependency for API Key validation
 api_key_header = APIKeyHeader(name="X-API-Key")
 
-def validate_api_key(api_key: str = Depends(api_key_header)):
+async def api_key_query(api_key: str = Query(None, alias="api-key")):
+    return api_key
+
+def validate_api_key(
+    header_api_key: str = Depends(api_key_header),
+    query_api_key: str = Depends(api_key_query),
+):
+    # Check if either the header or query parameter contains the valid API key
+    api_key = header_api_key or query_api_key
     if api_key != API_KEY:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN, detail={"error": "Invalid API Key"}
         )
+    return api_key
 
 # In-memory database for tasks
 task_db = [
